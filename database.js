@@ -1,26 +1,16 @@
-const initSqlJs = require('sql.js');
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 
-const DB_PATH = path.join(__dirname, 'workouts.db');
-
-let db;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')
+    ? { rejectUnauthorized: false }
+    : false
+});
 
 async function init() {
-  const SQL = await initSqlJs();
-
-  if (fs.existsSync(DB_PATH)) {
-    const buffer = fs.readFileSync(DB_PATH);
-    db = new SQL.Database(buffer);
-  } else {
-    db = new SQL.Database();
-  }
-
-  db.run('PRAGMA foreign_keys = ON');
-
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS exercises (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       day INTEGER NOT NULL,
       phase INTEGER NOT NULL,
@@ -29,107 +19,78 @@ async function init() {
     )
   `);
 
-  db.run(`
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS workout_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      exercise_id INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      exercise_id INTEGER NOT NULL REFERENCES exercises(id),
+      user_id INTEGER NOT NULL DEFAULT 0,
       date TEXT NOT NULL,
       set_number INTEGER NOT NULL,
       weight_kg REAL NOT NULL DEFAULT 0,
       reps INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (exercise_id) REFERENCES exercises(id)
+      created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
 
-  db.run('CREATE INDEX IF NOT EXISTS idx_logs_exercise_date ON workout_logs(exercise_id, date)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_logs_date ON workout_logs(date)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_exercise_date ON workout_logs(exercise_id, date)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_date ON workout_logs(date)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_user ON workout_logs(user_id)');
 
-  // Users & sessions
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      token TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-  `);
-
-  // Add user_id column to workout_logs if not present
-  try {
-    db.run('ALTER TABLE workout_logs ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0');
-  } catch (e) {
-    // Column already exists
-  }
-  db.run('CREATE INDEX IF NOT EXISTS idx_logs_user ON workout_logs(user_id)');
-
-  // User settings (rest days, training days per week, etc.)
-  db.run(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS user_settings (
-      user_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL REFERENCES users(id),
       key TEXT NOT NULL,
       value TEXT NOT NULL,
-      PRIMARY KEY (user_id, key),
-      FOREIGN KEY (user_id) REFERENCES users(id)
+      PRIMARY KEY (user_id, key)
     )
   `);
 
-  // Seed workout plan if empty
-  const result = db.exec('SELECT COUNT(*) as c FROM exercises');
-  const count = result[0].values[0][0];
-
-  if (count === 0) {
-    seedExercises();
+  // Seed exercises if empty
+  const result = await pool.query('SELECT COUNT(*) as c FROM exercises');
+  if (parseInt(result.rows[0].c) === 0) {
+    await seedExercises();
   }
-
-  save();
-  return db;
 }
 
-function save() {
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_PATH, buffer);
+async function all(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return result.rows;
 }
 
-function run(sql, params = []) {
-  db.run(sql, params);
-  save();
+async function get(sql, params = []) {
+  const result = await pool.query(sql, params);
+  return result.rows.length > 0 ? result.rows[0] : null;
 }
 
-function all(sql, params = []) {
-  const stmt = db.prepare(sql);
-  if (params.length) stmt.bind(params);
-  const rows = [];
-  while (stmt.step()) {
-    rows.push(stmt.getAsObject());
-  }
-  stmt.free();
-  return rows;
+async function run(sql, params = []) {
+  await pool.query(sql, params);
 }
 
-function get(sql, params = []) {
-  const rows = all(sql, params);
-  return rows.length > 0 ? rows[0] : null;
+async function insert(sql, params = []) {
+  // Append RETURNING id if not already present
+  const q = sql.toLowerCase().includes('returning') ? sql : sql + ' RETURNING id';
+  const result = await pool.query(q, params);
+  return result.rows[0] ? result.rows[0].id : null;
 }
 
-function insert(sql, params = []) {
-  db.run(sql, params);
-  const lastId = db.exec('SELECT last_insert_rowid()')[0].values[0][0];
-  save();
-  return lastId;
-}
-
-function seedExercises() {
+async function seedExercises() {
   const plan = {
     1: {
       1: {
@@ -214,15 +175,15 @@ function seedExercises() {
   for (const [phase, days] of Object.entries(plan)) {
     for (const [day, sessions] of Object.entries(days)) {
       for (const [session, exercises] of Object.entries(sessions)) {
-        exercises.forEach((name, idx) => {
-          db.run(
-            'INSERT INTO exercises (name, day, phase, session, sort_order) VALUES (?, ?, ?, ?, ?)',
-            [name, parseInt(day), parseInt(phase), session, idx]
+        for (let idx = 0; idx < exercises.length; idx++) {
+          await pool.query(
+            'INSERT INTO exercises (name, day, phase, session, sort_order) VALUES ($1, $2, $3, $4, $5)',
+            [exercises[idx], parseInt(day), parseInt(phase), session, idx]
           );
-        });
+        }
       }
     }
   }
 }
 
-module.exports = { init, run, all, get, insert, save };
+module.exports = { init, all, get, run, insert };
