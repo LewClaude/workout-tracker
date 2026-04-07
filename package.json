@@ -1,0 +1,13 @@
+{
+  "name": "workout-tracker",
+  "version": "1.0.0",
+  "description": "Progressive overload workout tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "sql.js": "^1.11.0"
+  }
+}

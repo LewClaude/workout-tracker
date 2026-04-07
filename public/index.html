@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Workout Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Workout Tracker</h1>
+      <div class="date-picker">
+        <button id="prevDay" class="btn-icon">&larr;</button>
+        <input type="date" id="dateInput">
+        <button id="nextDay" class="btn-icon">&rarr;</button>
+        <button id="todayBtn" class="btn-small">Today</button>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Phase</label>
+        <div class="btn-group" id="phaseGroup">
+          <button class="btn-toggle active" data-phase="1">Phase 1</button>
+          <button class="btn-toggle" data-phase="2">Phase 2</button>
+          <button class="btn-toggle" data-phase="3">Phase 3</button>
+        </div>
+      </div>
+      <div class="day-tabs" id="dayTabs">
+        <button class="day-tab" data-day="1">Mon</button>
+        <button class="day-tab" data-day="2">Tue</button>
+        <button class="day-tab" data-day="3">Wed</button>
+        <button class="day-tab" data-day="4">Thu</button>
+        <button class="day-tab" data-day="5">Fri</button>
+        <button class="day-tab" data-day="6">Sat</button>
+        <button class="day-tab rest" data-day="0">Sun</button>
+      </div>
+    </div>
+
+    <div class="stats-bar" id="statsBar">
+      <div class="stat">
+        <span class="stat-value" id="statVolume">0</span>
+        <span class="stat-label">Volume (kg)</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statSets">0</span>
+        <span class="stat-label">Sets Logged</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="statPBs">0</span>
+        <span class="stat-label">PBs</span>
+      </div>
+    </div>
+
+    <div id="restDay" class="rest-day" style="display:none">
+      <div class="rest-icon">&#128564;</div>
+      <h2>Rest Day</h2>
+      <p>Recovery is part of the gains. Take it easy today.</p>
+    </div>
+
+    <div id="workoutContent">
+      <div class="session-toggle">
+        <button class="session-btn active" data-session="AM">AM Session</button>
+        <button class="session-btn" data-session="PM">PM Session</button>
+      </div>
+      <div id="exerciseList" class="exercise-list"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
