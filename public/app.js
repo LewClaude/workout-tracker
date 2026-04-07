@@ -235,10 +235,17 @@
 
   async function loadWorkout() {
     if (restDays.includes(currentDay)) {
-      restDay.style.display = 'block';
-      workoutContent.style.display = 'none';
-      updateStats();
-      return;
+      // Check if there's logged data for this date — if so, show workout anyway
+      const date = formatDate(currentDate);
+      const logsRes = await fetch(`/api/logs/date/${date}`);
+      const existingLogs = await logsRes.json();
+
+      if (existingLogs.length === 0) {
+        restDay.style.display = 'block';
+        workoutContent.style.display = 'none';
+        updateStats();
+        return;
+      }
     }
 
     restDay.style.display = 'none';
