@@ -59,10 +59,13 @@
     mainApp.style.display = 'block';
     usernameDisplay.textContent = currentUser.username;
     await loadRestDays();
+    await loadTheme();
     setDate(new Date());
     bindEvents();
     loadPBs();
     loadChart();
+    loadCardioChart();
+    loadStreak();
   }
 
   function showAuthError(msg) {
@@ -128,6 +131,8 @@
     currentDay = jsDay === 0 ? 0 : jsDay;
     updateDayTabs();
     loadWorkout();
+    loadDailyData();
+    loadCardioEntries();
   }
 
   let eventsBound = false;
@@ -506,6 +511,7 @@
     updateStats();
     await loadPBs();
     loadChart();
+    loadStreak();
 
     // Update PB badge and per-row PB highlights
     const header = card.querySelector('.exercise-header');
@@ -684,6 +690,160 @@
     legend.innerHTML = groups.map(g =>
       `<span class="legend-item"><span class="legend-dot" style="background:${CHART_COLORS[g]}"></span>${g}</span>`
     ).join('');
+  }
+
+  // === Theme ===
+  async function loadTheme() {
+    const res = await fetch('/api/settings/theme');
+    const data = await res.json();
+    applyTheme(data.theme);
+  }
+
+  function applyTheme(theme) {
+    document.body.classList.toggle('light', theme === 'light');
+    const btn = document.getElementById('themeToggle');
+    btn.textContent = theme === 'light' ? '\u2600' : '\u263E';
+  }
+
+  document.getElementById('themeToggle').addEventListener('click', async () => {
+    const isLight = document.body.classList.contains('light');
+    const newTheme = isLight ? 'dark' : 'light';
+    applyTheme(newTheme);
+    await fetch('/api/settings/theme', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: newTheme })
+    });
+  });
+
+  // === Streak ===
+  async function loadStreak() {
+    const res = await fetch('/api/streak');
+    const data = await res.json();
+    document.getElementById('statStreak').textContent = data.streak;
+  }
+
+  // === Bodyweight + Notes ===
+  let dailyDebounce = null;
+  const bodyweightInput = document.getElementById('bodyweightInput');
+  const notesInput = document.getElementById('notesInput');
+
+  async function loadDailyData() {
+    const date = formatDate(currentDate);
+    const [bwRes, noteRes] = await Promise.all([
+      fetch('/api/bodyweight?days=30'),
+      fetch(`/api/notes/${date}`)
+    ]);
+    const bwData = await bwRes.json();
+    const noteData = await noteRes.json();
+
+    const todayBw = bwData.find(b => b.date === date);
+    bodyweightInput.value = todayBw ? todayBw.weight_kg : '';
+    notesInput.value = noteData.note || '';
+  }
+
+  bodyweightInput.addEventListener('change', async () => {
+    const val = parseFloat(bodyweightInput.value);
+    if (!val || val <= 0) return;
+    await fetch('/api/bodyweight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: formatDate(currentDate), weight_kg: val })
+    });
+    showSaved();
+  });
+
+  notesInput.addEventListener('blur', async () => {
+    await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: formatDate(currentDate), note: notesInput.value })
+    });
+    showSaved();
+  });
+
+  // === Cardio ===
+  async function loadCardioEntries() {
+    const date = formatDate(currentDate);
+    const res = await fetch(`/api/cardio/${date}`);
+    const entries = await res.json();
+    const list = document.getElementById('cardioList');
+
+    if (entries.length === 0) {
+      list.innerHTML = '';
+      return;
+    }
+
+    list.innerHTML = entries.map(e => `
+      <div class="cardio-entry" data-id="${e.id}">
+        <span class="cardio-type">${e.type}</span>
+        <span class="cardio-duration">${e.duration_mins} min</span>
+        <span class="cardio-note">${e.notes || ''}</span>
+        <button class="cardio-delete" data-id="${e.id}">&times;</button>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.cardio-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await fetch(`/api/cardio/${btn.dataset.id}`, { method: 'DELETE' });
+        loadCardioEntries();
+        loadCardioChart();
+        showSaved();
+      });
+    });
+  }
+
+  document.getElementById('addCardioBtn').addEventListener('click', async () => {
+    const type = document.getElementById('cardioType').value;
+    const mins = parseInt(document.getElementById('cardioDuration').value);
+    const notes = document.getElementById('cardioNotes').value;
+    if (!mins || mins <= 0) return;
+
+    await fetch('/api/cardio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: formatDate(currentDate),
+        type,
+        duration_mins: mins,
+        notes
+      })
+    });
+    document.getElementById('cardioDuration').value = '';
+    document.getElementById('cardioNotes').value = '';
+    loadCardioEntries();
+    loadCardioChart();
+    showSaved();
+  });
+
+  // === Weekly Cardio Chart ===
+  async function loadCardioChart() {
+    const res = await fetch('/api/cardio/weekly?weeks=8');
+    const { data } = await res.json();
+    const container = document.getElementById('cardioChartContainer');
+
+    if (data.length === 0) {
+      container.innerHTML = '<p style="text-align:center;color:var(--text-dim);padding:20px;font-size:13px">Log cardio to see your weekly minutes</p>';
+      return;
+    }
+
+    let maxMins = 0;
+    data.forEach(w => { if (w.total_mins > maxMins) maxMins = w.total_mins; });
+
+    let barsHtml = '';
+    data.forEach(week => {
+      const pct = maxMins > 0 ? (week.total_mins / maxMins) * 100 : 0;
+      const label = week.week.slice(5);
+      barsHtml += `
+        <div class="chart-bar-wrapper">
+          <div class="chart-bar">
+            <div class="chart-segment" style="height:${pct}%;background:var(--green)" title="${week.total_mins} mins"></div>
+          </div>
+          <span class="chart-bar-label">${label}</span>
+        </div>`;
+    });
+
+    container.innerHTML = barsHtml;
   }
 
   // === Rest Day Settings ===

@@ -300,6 +300,158 @@ app.put('/api/settings/rest-days', requireAuth, async (req, res) => {
   res.json({ success: true, rest_days });
 });
 
+// === Streak ===
+app.get('/api/streak', requireAuth, async (req, res) => {
+  const dates = await db.all(
+    'SELECT DISTINCT date FROM workout_logs WHERE user_id = $1 ORDER BY date DESC',
+    [req.userId]
+  );
+
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dateSet = new Set(dates.map(d => d.date));
+
+  for (let i = 0; ; i++) {
+    const check = new Date(today);
+    check.setDate(check.getDate() - i);
+    const dateStr = check.toISOString().split('T')[0];
+    if (dateSet.has(dateStr)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  res.json({ streak });
+});
+
+// === Bodyweight ===
+app.get('/api/bodyweight', requireAuth, async (req, res) => {
+  const days = parseInt(req.query.days) || 30;
+  const rows = await db.all(
+    'SELECT date, weight_kg FROM bodyweight_logs WHERE user_id = $1 ORDER BY date DESC LIMIT $2',
+    [req.userId, days]
+  );
+  res.json(rows);
+});
+
+app.post('/api/bodyweight', requireAuth, async (req, res) => {
+  const { date, weight_kg } = req.body;
+  await db.run(
+    'INSERT INTO bodyweight_logs (user_id, date, weight_kg) VALUES ($1, $2, $3) ON CONFLICT (user_id, date) DO UPDATE SET weight_kg = $3',
+    [req.userId, date, weight_kg]
+  );
+  res.json({ success: true });
+});
+
+// === Cardio ===
+app.get('/api/cardio/weekly', requireAuth, async (req, res) => {
+  const weeks = parseInt(req.query.weeks) || 8;
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - (weeks * 7));
+  const startStr = startDate.toISOString().split('T')[0];
+
+  const logs = await db.all(
+    'SELECT date, duration_mins FROM cardio_logs WHERE user_id = $1 AND date >= $2 ORDER BY date',
+    [req.userId, startStr]
+  );
+
+  const weeklyData = {};
+  logs.forEach(log => {
+    const d = new Date(log.date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setDate(diff);
+    const weekKey = monday.toISOString().split('T')[0];
+
+    if (!weeklyData[weekKey]) weeklyData[weekKey] = 0;
+    weeklyData[weekKey] += log.duration_mins;
+  });
+
+  const data = Object.keys(weeklyData).sort().map(w => ({
+    week: w,
+    total_mins: weeklyData[w]
+  }));
+
+  res.json({ data });
+});
+
+app.get('/api/cardio/:date', requireAuth, async (req, res) => {
+  const rows = await db.all(
+    'SELECT * FROM cardio_logs WHERE user_id = $1 AND date = $2 ORDER BY id',
+    [req.userId, req.params.date]
+  );
+  res.json(rows);
+});
+
+app.post('/api/cardio', requireAuth, async (req, res) => {
+  const { date, type, duration_mins, notes } = req.body;
+  const id = await db.insert(
+    'INSERT INTO cardio_logs (user_id, date, type, duration_mins, notes) VALUES ($1, $2, $3, $4, $5)',
+    [req.userId, date, type, duration_mins, notes || '']
+  );
+  res.json({ id });
+});
+
+app.delete('/api/cardio/:id', requireAuth, async (req, res) => {
+  await db.run(
+    'DELETE FROM cardio_logs WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.userId]
+  );
+  res.json({ success: true });
+});
+
+// === Workout Notes ===
+app.get('/api/notes/:date', requireAuth, async (req, res) => {
+  const row = await db.get(
+    'SELECT note FROM workout_notes WHERE user_id = $1 AND date = $2',
+    [req.userId, req.params.date]
+  );
+  res.json({ note: row ? row.note : '' });
+});
+
+app.post('/api/notes', requireAuth, async (req, res) => {
+  const { date, note } = req.body;
+  await db.run(
+    'INSERT INTO workout_notes (user_id, date, note) VALUES ($1, $2, $3) ON CONFLICT (user_id, date) DO UPDATE SET note = $3',
+    [req.userId, date, note]
+  );
+  res.json({ success: true });
+});
+
+// === Theme Settings ===
+app.get('/api/settings/theme', requireAuth, async (req, res) => {
+  const setting = await db.get(
+    "SELECT value FROM user_settings WHERE user_id = $1 AND key = 'theme'",
+    [req.userId]
+  );
+  res.json({ theme: setting ? setting.value : 'dark' });
+});
+
+app.put('/api/settings/theme', requireAuth, async (req, res) => {
+  const { theme } = req.body;
+  const existing = await db.get(
+    "SELECT value FROM user_settings WHERE user_id = $1 AND key = 'theme'",
+    [req.userId]
+  );
+  if (existing) {
+    await db.run(
+      "UPDATE user_settings SET value = $1 WHERE user_id = $2 AND key = 'theme'",
+      [theme, req.userId]
+    );
+  } else {
+    await db.run(
+      "INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'theme', $2)",
+      [req.userId, theme]
+    );
+  }
+  res.json({ success: true, theme });
+});
+
 // === Weekly volume by muscle group ===
 const MUSCLE_GROUPS = {
   'Chest': ['bench', 'press', 'flye', 'fly', 'dip', 'push-up', 'pushup', 'svend', 'landmine press', 'spoto'],

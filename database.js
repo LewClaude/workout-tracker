@@ -79,6 +79,39 @@ async function init() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bodyweight_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      weight_kg REAL NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, date)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cardio_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      type TEXT NOT NULL,
+      duration_mins INTEGER NOT NULL DEFAULT 0,
+      notes TEXT DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS workout_notes (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      UNIQUE(user_id, date)
+    )
+  `);
+
   // One-time migration: wipe all legacy data from before per-user update
   // Check if any old exercises with user_id=0 exist
   const oldExercises = await pool.query('SELECT COUNT(*) as c FROM exercises WHERE user_id = 0');

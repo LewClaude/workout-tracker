@@ -1259,6 +1259,248 @@ input[type="number"]::-webkit-outer-spin-button {
   background: var(--text-dim);
 }
 
+/* ===== Streak stat ===== */
+.stat-streak .stat-value {
+  color: var(--accent-light);
+}
+
+/* ===== Daily Bar (bodyweight + notes) ===== */
+.daily-bar {
+  margin-bottom: 14px;
+}
+
+.daily-bar-row {
+  display: flex;
+  gap: 10px;
+}
+
+.daily-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.daily-input-group label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.daily-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.daily-input {
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  width: 90px;
+  -webkit-appearance: none;
+}
+
+.daily-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.daily-unit {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.daily-notes-group {
+  flex: 1;
+}
+
+.daily-notes-input {
+  width: 100%;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.daily-notes-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.daily-notes-input::placeholder {
+  color: var(--text-dim);
+}
+
+/* ===== Cardio Section ===== */
+.cardio-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.cardio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cardio-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+}
+
+.cardio-type {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-light);
+  min-width: 70px;
+}
+
+.cardio-duration {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.cardio-note {
+  font-size: 11px;
+  color: var(--text-dim);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardio-delete {
+  background: none;
+  border: none;
+  color: var(--red);
+  opacity: 0.4;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.cardio-add {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.cardio-select {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  min-width: 90px;
+}
+
+.cardio-dur-input {
+  background: var(--input-bg);
+  color: var(--input-text);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  width: 60px;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+
+.cardio-dur-input:focus {
+  outline: 2px solid var(--accent);
+}
+
+.cardio-notes-input {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  flex: 1;
+  min-width: 0;
+}
+
+.cardio-notes-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cardio-notes-input::placeholder {
+  color: var(--text-dim);
+}
+
+/* ===== Light Theme ===== */
+body.light {
+  --bg: #f0f0f5;
+  --surface: #ffffff;
+  --surface2: #f5f5fa;
+  --surface3: #eaeaf0;
+  --border: #d8d8e4;
+  --border-light: #c8c8d8;
+  --text: #1a1a2e;
+  --text-dim: #6b6b85;
+  --input-bg: #ffffff;
+  --input-text: #1a1a2e;
+  --accent-glow: rgba(240, 112, 48, 0.1);
+  --accent-glow-strong: rgba(240, 112, 48, 0.2);
+}
+
+body.light::before {
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='0.6' fill='rgba(0,0,0,0.03)'/%3E%3C/svg%3E");
+}
+
+body.light {
+  background-image:
+    radial-gradient(ellipse 800px 500px at 10% 0%, rgba(240, 112, 48, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 600px at 90% 90%, rgba(45, 212, 168, 0.04) 0%, transparent 60%),
+    linear-gradient(180deg, #f0f0f5 0%, #e8e8f0 100%);
+}
+
+body.light .cardio-select {
+  color-scheme: light;
+}
+
+body.light .date-picker input[type="date"] {
+  color-scheme: light;
+  background: var(--surface);
+  color: var(--text);
+}
+
+body.light .auth-screen {
+  background:
+    radial-gradient(ellipse 500px 300px at 50% 0%, rgba(240, 112, 48, 0.08) 0%, transparent 70%),
+    linear-gradient(180deg, #f0f0f5 0%, #e8e8f0 100%);
+}
+
+body.light .save-indicator {
+  box-shadow: 0 4px 16px rgba(45, 212, 168, 0.2);
+}
+
 /* ===== Selection ===== */
 ::selection {
   background: var(--accent-glow-strong);
