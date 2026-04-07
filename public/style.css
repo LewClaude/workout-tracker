@@ -554,6 +554,69 @@ header h1 {
   color: #1a1a2e;
 }
 
+/* Drop set row */
+.set-row-drop {
+  background: rgba(92, 170, 255, 0.08);
+  border-radius: 12px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  margin-top: -2px;
+  border: 1px solid rgba(92, 170, 255, 0.2);
+  border-left: 3px solid #5cabff;
+}
+
+.set-row-drop .set-number {
+  background: #5cabff;
+  color: #1a1a2e;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.drop-badge {
+  background: #5cabff;
+  color: #1a1a2e;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.btn-drop-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.set-row-drop .btn-drop-toggle {
+  background: #5cabff;
+  color: #1a1a2e;
+  border-color: #5cabff;
+}
+
+.btn-drop-toggle:active {
+  transform: scale(0.9);
+}
+
+/* Drop set in history */
+.hist-drop {
+  color: #5cabff;
+  font-weight: 700;
+  margin-right: 2px;
+}
+
 .set-input {
   background: var(--input-bg);
   color: var(--input-text);

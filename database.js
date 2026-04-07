@@ -59,6 +59,13 @@ async function init() {
     )
   `);
 
+  // Add is_drop_set column if migrating
+  try {
+    await pool.query('ALTER TABLE workout_logs ADD COLUMN is_drop_set BOOLEAN NOT NULL DEFAULT false');
+  } catch (e) {
+    // Column already exists
+  }
+
   await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_exercise_date ON workout_logs(exercise_id, date)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_date ON workout_logs(date)');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_logs_user ON workout_logs(user_id)');

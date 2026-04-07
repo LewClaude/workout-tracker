@@ -299,13 +299,28 @@
       let historyHtml = '';
       if (prevSets.length > 0) {
         const histSets = prevSets
-          .map(s => `${s.weight_kg}kg x ${s.reps}`)
+          .map(s => `${s.is_drop_set ? '<span class="hist-drop">D:</span>' : ''}${s.weight_kg}kg x ${s.reps}`)
           .join(' | ');
         historyHtml = `
           <div class="exercise-history">
             <span class="hist-label">Last (${ex.history.date}):</span> ${histSets}
           </div>`;
       }
+
+      // Number only non-drop sets
+      let setNum = 0;
+      const setRows = sets.map((s, i) => {
+        const isDrop = !!s.is_drop_set;
+        if (!isDrop) setNum++;
+        const prev = prevSets[i];
+        const placeholderW = prev ? prev.weight_kg : '0';
+        const placeholderR = prev ? prev.reps : '0';
+        const w = parseFloat(s.weight_kg) || 0;
+        const r = parseInt(s.reps) || 0;
+        const isSetPB = w > 0 && r > 0 && maxWeight > 0 && w > maxWeight;
+        const isSetMatchPB = w > 0 && r > 0 && maxWeight > 0 && w >= maxWeight && isPB;
+        return renderSetRow(isDrop ? '' : setNum, s.weight_kg, s.reps, s.id, placeholderW, placeholderR, isSetPB || isSetMatchPB, isDrop);
+      }).join('');
 
       card.innerHTML = `
         <div class="exercise-header">
@@ -315,17 +330,7 @@
         </div>
         ${historyHtml}
         <div class="sets-container">
-          ${sets.map((s, i) => {
-            const prev = prevSets[i];
-            const placeholderW = prev ? prev.weight_kg : '0';
-            const placeholderR = prev ? prev.reps : '0';
-            const w = parseFloat(s.weight_kg) || 0;
-            const r = parseInt(s.reps) || 0;
-            const isSetPB = w > 0 && r > 0 && maxWeight > 0 && w > maxWeight;
-            // Also highlight if equals max but this is the session that set it
-            const isSetMatchPB = w > 0 && r > 0 && maxWeight > 0 && w >= maxWeight && isPB;
-            return renderSetRow(i + 1, s.weight_kg, s.reps, s.id, placeholderW, placeholderR, isSetPB || isSetMatchPB);
-          }).join('')}
+          ${setRows}
         </div>
         <button class="btn-add-set" data-exercise-id="${ex.id}">+ Add Set</button>
       `;
@@ -333,6 +338,33 @@
       // Rest timer button
       card.querySelector('.btn-rest-timer').addEventListener('click', () => {
         showTimerUI();
+      });
+
+      // Bind drop set toggle
+      card.querySelectorAll('.btn-drop-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = btn.closest('.set-row');
+          const isDrop = row.dataset.drop === '1';
+          row.dataset.drop = isDrop ? '0' : '1';
+          row.classList.toggle('set-row-drop', !isDrop);
+          const numEl = row.querySelector('.set-number');
+          if (!isDrop) {
+            numEl.textContent = 'D';
+            // Add drop badge if not present
+            if (!row.querySelector('.drop-badge')) {
+              const badge = document.createElement('span');
+              badge.className = 'drop-badge';
+              badge.textContent = 'DROP';
+              row.insertBefore(badge, row.querySelector('.weight-input'));
+            }
+          } else {
+            // Remove drop badge
+            const badge = row.querySelector('.drop-badge');
+            if (badge) badge.remove();
+          }
+          renumberSets(card);
+          handleSetChange(ex.id, card);
+        });
       });
 
       // Bind set input events
@@ -348,7 +380,7 @@
         const placeholderW = prev ? prev.weight_kg : '0';
         const placeholderR = prev ? prev.reps : '0';
         const row = document.createElement('div');
-        row.innerHTML = renderSetRow(setCount, '', '', null, placeholderW, placeholderR, false);
+        row.innerHTML = renderSetRow(setCount, '', '', null, placeholderW, placeholderR, false, false);
         const newRow = row.firstElementChild;
         container.appendChild(newRow);
 
@@ -357,9 +389,32 @@
           input.addEventListener('blur', () => handleSetChange(ex.id, card));
         });
 
+        newRow.querySelector('.btn-drop-toggle').addEventListener('click', () => {
+          const isDrop = newRow.dataset.drop === '1';
+          newRow.dataset.drop = isDrop ? '0' : '1';
+          newRow.classList.toggle('set-row-drop', !isDrop);
+          const numEl = newRow.querySelector('.set-number');
+          if (!isDrop) {
+            numEl.textContent = 'D';
+            if (!newRow.querySelector('.drop-badge')) {
+              const badge = document.createElement('span');
+              badge.className = 'drop-badge';
+              badge.textContent = 'DROP';
+              newRow.insertBefore(badge, newRow.querySelector('.weight-input'));
+            }
+          } else {
+            const badge = newRow.querySelector('.drop-badge');
+            if (badge) badge.remove();
+          }
+          renumberSets(card);
+          handleSetChange(ex.id, card);
+        });
+
         newRow.querySelector('.btn-remove-set').addEventListener('click', () => {
           removeSet(ex.id, card, newRow);
         });
+
+        renumberSets(card);
       });
 
       card.querySelectorAll('.btn-remove-set').forEach(btn => {
@@ -373,11 +428,14 @@
     });
   }
 
-  function renderSetRow(num, weight, reps, logId, placeholderW, placeholderR, isPBRow) {
+  function renderSetRow(num, weight, reps, logId, placeholderW, placeholderR, isPBRow, isDropSet) {
     const hasValue = (v) => v !== '' && v !== null && v !== undefined;
+    const dropClass = isDropSet ? ' set-row-drop' : '';
+    const pbClass = isPBRow ? ' set-row-pb' : '';
     return `
-      <div class="set-row ${isPBRow ? 'set-row-pb' : ''}" data-log-id="${logId || ''}">
-        <span class="set-number">${num}</span>
+      <div class="set-row${pbClass}${dropClass}" data-log-id="${logId || ''}" data-drop="${isDropSet ? '1' : '0'}">
+        <span class="set-number">${isDropSet ? 'D' : num}</span>
+        ${isDropSet ? '<span class="drop-badge">DROP</span>' : ''}
         <input type="number" class="set-input weight-input" placeholder="${placeholderW}"
                value="${hasValue(weight) ? weight : ''}"
                min="0" step="0.5" inputmode="decimal">
@@ -386,8 +444,18 @@
                value="${hasValue(reps) ? reps : ''}"
                min="0" step="1" inputmode="numeric">
         <span class="input-label">REPS</span>
+        <button class="btn-drop-toggle" title="Toggle drop set">&darr;</button>
         <button class="btn-remove-set">&times;</button>
       </div>`;
+  }
+
+  function renumberSets(card) {
+    let num = 0;
+    card.querySelectorAll('.set-row').forEach(row => {
+      const isDrop = row.dataset.drop === '1';
+      if (!isDrop) num++;
+      row.querySelector('.set-number').textContent = isDrop ? 'D' : num;
+    });
   }
 
   async function handleSetChange(exerciseId, card) {
@@ -405,6 +473,7 @@
       const row = rows[i];
       const weight = parseFloat(row.querySelector('.weight-input').value) || 0;
       const reps = parseInt(row.querySelector('.reps-input').value) || 0;
+      const isDrop = row.dataset.drop === '1';
 
       if (weight > 0 || reps > 0) {
         await fetch('/api/logs', {
@@ -415,7 +484,8 @@
             date,
             set_number: i + 1,
             weight_kg: weight,
-            reps
+            reps,
+            is_drop_set: isDrop
           })
         });
       }

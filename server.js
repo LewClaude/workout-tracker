@@ -150,7 +150,7 @@ app.get('/api/logs/date/:date', requireAuth, async (req, res) => {
 });
 
 app.post('/api/logs', requireAuth, async (req, res) => {
-  const { exercise_id, date, set_number, weight_kg, reps } = req.body;
+  const { exercise_id, date, set_number, weight_kg, reps, is_drop_set } = req.body;
 
   // Verify the exercise belongs to this user
   const exercise = await db.get('SELECT id FROM exercises WHERE id = $1 AND user_id = $2', [exercise_id, req.userId]);
@@ -163,14 +163,14 @@ app.post('/api/logs', requireAuth, async (req, res) => {
 
   if (existing) {
     await db.run(
-      'UPDATE workout_logs SET weight_kg = $1, reps = $2 WHERE id = $3',
-      [weight_kg, reps, existing.id]
+      'UPDATE workout_logs SET weight_kg = $1, reps = $2, is_drop_set = $3 WHERE id = $4',
+      [weight_kg, reps, !!is_drop_set, existing.id]
     );
     res.json({ id: existing.id, updated: true });
   } else {
     const lastId = await db.insert(
-      'INSERT INTO workout_logs (exercise_id, date, set_number, weight_kg, reps, user_id) VALUES ($1, $2, $3, $4, $5, $6)',
-      [exercise_id, date, set_number, weight_kg, reps, req.userId]
+      'INSERT INTO workout_logs (exercise_id, date, set_number, weight_kg, reps, user_id, is_drop_set) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [exercise_id, date, set_number, weight_kg, reps, req.userId, !!is_drop_set]
     );
     res.json({ id: lastId, updated: false });
   }
