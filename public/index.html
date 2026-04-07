@@ -9,9 +9,28 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app">
-    <header>
+  <!-- Auth Screen -->
+  <div id="authScreen" class="auth-screen" style="display:none">
+    <div class="auth-box">
       <h1>Workout Tracker</h1>
+      <p class="auth-subtitle">Log in or create an account</p>
+      <div id="authError" class="auth-error" style="display:none"></div>
+      <input type="text" id="authUsername" class="auth-input" placeholder="Username" autocapitalize="none" autocorrect="off">
+      <input type="password" id="authPassword" class="auth-input" placeholder="Password">
+      <button id="loginBtn" class="auth-btn">Log In</button>
+      <button id="registerBtn" class="auth-btn auth-btn-secondary">Create Account</button>
+    </div>
+  </div>
+
+  <div class="app" id="mainApp" style="display:none">
+    <header>
+      <div class="header-top">
+        <h1>Workout Tracker</h1>
+        <div class="user-info">
+          <span id="usernameDisplay"></span>
+          <button id="logoutBtn" class="btn-small btn-logout">Logout</button>
+        </div>
+      </div>
       <div class="date-picker">
         <button id="prevDay" class="btn-icon">&larr;</button>
         <input type="date" id="dateInput">
@@ -67,6 +86,45 @@
         <button class="session-btn" data-session="PM">PM Session</button>
       </div>
       <div id="exerciseList" class="exercise-list"></div>
+    </div>
+
+    <!-- Weekly Volume Chart -->
+    <div class="chart-section" id="chartSection">
+      <h3 class="section-title">Weekly Volume</h3>
+      <div class="chart-container" id="chartContainer"></div>
+      <div class="chart-legend" id="chartLegend"></div>
+    </div>
+
+    <!-- Rest Timer Modal -->
+    <div id="restTimer" class="rest-timer" style="display:none">
+      <div class="timer-display" id="timerDisplay">1:30</div>
+      <div class="timer-label" id="timerLabel">Rest Timer</div>
+      <div class="timer-buttons">
+        <button class="timer-btn" data-seconds="90">1:30</button>
+        <button class="timer-btn" data-seconds="120">2:00</button>
+        <button class="timer-btn" data-seconds="180">3:00</button>
+      </div>
+      <button class="timer-close" id="timerClose">&times;</button>
+    </div>
+
+    <button id="editBtn" class="fab-edit" title="Edit workout plan">&#9998;</button>
+
+    <!-- Editor Modal -->
+    <div id="editorModal" class="modal" style="display:none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Edit Exercises</h2>
+          <button id="closeEditor" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-info">
+          <span id="editorContext"></span>
+        </div>
+        <div id="editorList" class="editor-list"></div>
+        <div class="editor-add">
+          <input type="text" id="newExerciseName" class="editor-input" placeholder="New exercise name...">
+          <button id="addExerciseBtn" class="btn-small">Add</button>
+        </div>
+      </div>
     </div>
   </div>
 

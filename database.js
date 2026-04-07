@@ -45,6 +45,33 @@ async function init() {
   db.run('CREATE INDEX IF NOT EXISTS idx_logs_exercise_date ON workout_logs(exercise_id, date)');
   db.run('CREATE INDEX IF NOT EXISTS idx_logs_date ON workout_logs(date)');
 
+  // Users & sessions
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  // Add user_id column to workout_logs if not present
+  try {
+    db.run('ALTER TABLE workout_logs ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0');
+  } catch (e) {
+    // Column already exists
+  }
+  db.run('CREATE INDEX IF NOT EXISTS idx_logs_user ON workout_logs(user_id)');
+
   // Seed workout plan if empty
   const result = db.exec('SELECT COUNT(*) as c FROM exercises');
   const count = result[0].values[0][0];
