@@ -66,6 +66,9 @@ app.post('/api/auth/register', async (req, res) => {
   const passwordHash = hashPassword(password);
   const userId = await db.insert('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [username, passwordHash]);
 
+  // Seed default exercises for the new user
+  await db.seedExercisesForUser(userId);
+
   const token = generateToken();
   await db.run('INSERT INTO sessions (token, user_id) VALUES ($1, $2)', [token, userId]);
 
@@ -107,21 +110,21 @@ app.get('/api/auth/me', async (req, res) => {
   res.json({ user: user || null });
 });
 
-// === Exercise routes ===
-app.get('/api/exercises', async (req, res) => {
+// === Exercise routes (all user-scoped) ===
+app.get('/api/exercises', requireAuth, async (req, res) => {
   const { day, phase, session } = req.query;
   const exercises = await db.all(
-    'SELECT * FROM exercises WHERE day = $1 AND phase = $2 AND session = $3 ORDER BY sort_order',
-    [Number(day), Number(phase), session]
+    'SELECT * FROM exercises WHERE user_id = $1 AND day = $2 AND phase = $3 AND session = $4 ORDER BY sort_order',
+    [req.userId, Number(day), Number(phase), session]
   );
   res.json(exercises);
 });
 
-app.get('/api/exercises/day', async (req, res) => {
+app.get('/api/exercises/day', requireAuth, async (req, res) => {
   const { day, phase } = req.query;
   const exercises = await db.all(
-    'SELECT * FROM exercises WHERE day = $1 AND phase = $2 ORDER BY session DESC, sort_order',
-    [Number(day), Number(phase)]
+    'SELECT * FROM exercises WHERE user_id = $1 AND day = $2 AND phase = $3 ORDER BY session DESC, sort_order',
+    [req.userId, Number(day), Number(phase)]
   );
   res.json(exercises);
 });
@@ -148,6 +151,10 @@ app.get('/api/logs/date/:date', requireAuth, async (req, res) => {
 
 app.post('/api/logs', requireAuth, async (req, res) => {
   const { exercise_id, date, set_number, weight_kg, reps } = req.body;
+
+  // Verify the exercise belongs to this user
+  const exercise = await db.get('SELECT id FROM exercises WHERE id = $1 AND user_id = $2', [exercise_id, req.userId]);
+  if (!exercise) return res.status(403).json({ error: 'Exercise not found' });
 
   const existing = await db.get(
     'SELECT id FROM workout_logs WHERE exercise_id = $1 AND date = $2 AND set_number = $3 AND user_id = $4',
@@ -317,7 +324,7 @@ app.get('/api/weekly-volume', requireAuth, async (req, res) => {
   const { weeks } = req.query;
   const numWeeks = parseInt(weeks) || 8;
 
-  const allExercises = await db.all('SELECT id, name FROM exercises');
+  const allExercises = await db.all('SELECT id, name FROM exercises WHERE user_id = $1', [req.userId]);
   const exerciseGroupMap = {};
   allExercises.forEach(e => {
     exerciseGroupMap[e.id] = getExerciseMuscleGroup(e.name);
@@ -363,38 +370,38 @@ app.get('/api/weekly-volume', requireAuth, async (req, res) => {
   res.json({ groups, data: result });
 });
 
-// === Editor API ===
-app.put('/api/exercises/:id', async (req, res) => {
+// === Editor API (user-scoped) ===
+app.put('/api/exercises/:id', requireAuth, async (req, res) => {
   const { name } = req.body;
-  await db.run('UPDATE exercises SET name = $1 WHERE id = $2', [name, Number(req.params.id)]);
+  await db.run('UPDATE exercises SET name = $1 WHERE id = $2 AND user_id = $3', [name, Number(req.params.id), req.userId]);
   res.json({ success: true });
 });
 
-app.post('/api/exercises', async (req, res) => {
+app.post('/api/exercises', requireAuth, async (req, res) => {
   const { name, day, phase, session } = req.body;
   const maxOrder = await db.get(
-    'SELECT COALESCE(MAX(sort_order), -1) as m FROM exercises WHERE day = $1 AND phase = $2 AND session = $3',
-    [day, phase, session]
+    'SELECT COALESCE(MAX(sort_order), -1) as m FROM exercises WHERE user_id = $1 AND day = $2 AND phase = $3 AND session = $4',
+    [req.userId, day, phase, session]
   );
   const sortOrder = (maxOrder ? parseInt(maxOrder.m) : -1) + 1;
   const lastId = await db.insert(
-    'INSERT INTO exercises (name, day, phase, session, sort_order) VALUES ($1, $2, $3, $4, $5)',
-    [name, day, phase, session, sortOrder]
+    'INSERT INTO exercises (user_id, name, day, phase, session, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+    [req.userId, name, day, phase, session, sortOrder]
   );
   res.json({ id: lastId, sort_order: sortOrder });
 });
 
-app.delete('/api/exercises/:id', async (req, res) => {
+app.delete('/api/exercises/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  await db.run('DELETE FROM workout_logs WHERE exercise_id = $1', [id]);
-  await db.run('DELETE FROM exercises WHERE id = $1', [id]);
+  await db.run('DELETE FROM workout_logs WHERE exercise_id = $1 AND user_id = $2', [id, req.userId]);
+  await db.run('DELETE FROM exercises WHERE id = $1 AND user_id = $2', [id, req.userId]);
   res.json({ success: true });
 });
 
-app.put('/api/exercises/reorder', async (req, res) => {
+app.put('/api/exercises/reorder', requireAuth, async (req, res) => {
   const { orders } = req.body;
   for (const o of orders) {
-    await db.run('UPDATE exercises SET sort_order = $1 WHERE id = $2', [o.sort_order, o.id]);
+    await db.run('UPDATE exercises SET sort_order = $1 WHERE id = $2 AND user_id = $3', [o.sort_order, o.id, req.userId]);
   }
   res.json({ success: true });
 });

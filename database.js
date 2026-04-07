@@ -9,17 +9,6 @@ const pool = new Pool({
 
 async function init() {
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS exercises (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      day INTEGER NOT NULL,
-      phase INTEGER NOT NULL,
-      session TEXT NOT NULL CHECK(session IN ('AM', 'PM')),
-      sort_order INTEGER NOT NULL DEFAULT 0
-    )
-  `);
-
-  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
@@ -37,9 +26,30 @@ async function init() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS exercises (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL DEFAULT 0,
+      name TEXT NOT NULL,
+      day INTEGER NOT NULL,
+      phase INTEGER NOT NULL,
+      session TEXT NOT NULL CHECK(session IN ('AM', 'PM')),
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  // Add user_id column if migrating from old schema
+  try {
+    await pool.query('ALTER TABLE exercises ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0');
+  } catch (e) {
+    // Column already exists
+  }
+
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_exercises_user ON exercises(user_id)');
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS workout_logs (
       id SERIAL PRIMARY KEY,
-      exercise_id INTEGER NOT NULL REFERENCES exercises(id),
+      exercise_id INTEGER NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
       user_id INTEGER NOT NULL DEFAULT 0,
       date TEXT NOT NULL,
       set_number INTEGER NOT NULL,
@@ -61,12 +71,6 @@ async function init() {
       PRIMARY KEY (user_id, key)
     )
   `);
-
-  // Seed exercises if empty
-  const result = await pool.query('SELECT COUNT(*) as c FROM exercises');
-  if (parseInt(result.rows[0].c) === 0) {
-    await seedExercises();
-  }
 }
 
 async function all(sql, params = []) {
@@ -84,13 +88,13 @@ async function run(sql, params = []) {
 }
 
 async function insert(sql, params = []) {
-  // Append RETURNING id if not already present
   const q = sql.toLowerCase().includes('returning') ? sql : sql + ' RETURNING id';
   const result = await pool.query(q, params);
   return result.rows[0] ? result.rows[0].id : null;
 }
 
-async function seedExercises() {
+// Seed default exercises for a new user
+async function seedExercisesForUser(userId) {
   const plan = {
     1: {
       1: {
@@ -177,8 +181,8 @@ async function seedExercises() {
       for (const [session, exercises] of Object.entries(sessions)) {
         for (let idx = 0; idx < exercises.length; idx++) {
           await pool.query(
-            'INSERT INTO exercises (name, day, phase, session, sort_order) VALUES ($1, $2, $3, $4, $5)',
-            [exercises[idx], parseInt(day), parseInt(phase), session, idx]
+            'INSERT INTO exercises (user_id, name, day, phase, session, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+            [userId, exercises[idx], parseInt(day), parseInt(phase), session, idx]
           );
         }
       }
@@ -186,4 +190,4 @@ async function seedExercises() {
   }
 }
 
-module.exports = { init, all, get, run, insert };
+module.exports = { init, all, get, run, insert, seedExercisesForUser };
