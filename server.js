@@ -263,6 +263,37 @@ app.get('/api/stats/:date', requireAuth, (req, res) => {
   });
 });
 
+// === User Settings (rest days) ===
+app.get('/api/settings/rest-days', requireAuth, (req, res) => {
+  const setting = db.get(
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'rest_days'",
+    [req.userId]
+  );
+  // Default: Sunday (0) is rest
+  const restDays = setting ? JSON.parse(setting.value) : [0];
+  res.json({ rest_days: restDays });
+});
+
+app.put('/api/settings/rest-days', requireAuth, (req, res) => {
+  const { rest_days } = req.body; // array of day numbers, e.g. [0, 3] for Sun and Wed
+  const existing = db.get(
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'rest_days'",
+    [req.userId]
+  );
+  if (existing) {
+    db.run(
+      "UPDATE user_settings SET value = ? WHERE user_id = ? AND key = 'rest_days'",
+      [JSON.stringify(rest_days), req.userId]
+    );
+  } else {
+    db.insert(
+      "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'rest_days', ?)",
+      [req.userId, JSON.stringify(rest_days)]
+    );
+  }
+  res.json({ success: true, rest_days });
+});
+
 // === Weekly volume by muscle group ===
 const MUSCLE_GROUPS = {
   'Chest': ['bench', 'press', 'flye', 'fly', 'dip', 'push-up', 'pushup', 'svend', 'landmine press', 'spoto'],

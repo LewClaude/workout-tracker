@@ -28,6 +28,7 @@
         <h1>Workout Tracker</h1>
         <div class="user-info">
           <span id="usernameDisplay"></span>
+          <button id="settingsBtn" class="btn-icon btn-settings" title="Settings">&#9881;</button>
           <button id="logoutBtn" class="btn-small btn-logout">Logout</button>
         </div>
       </div>
@@ -108,6 +109,27 @@
     </div>
 
     <button id="editBtn" class="fab-edit" title="Edit workout plan">&#9998;</button>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" style="display:none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Your Weekly Schedule</h2>
+          <button id="closeSettings" class="btn-icon">&times;</button>
+        </div>
+        <p class="settings-desc">Choose which days you train. Tap a day to switch between training and rest. This controls which days show your exercises vs recovery screen.</p>
+        <div class="rest-day-grid" id="restDayGrid">
+          <button class="rest-day-toggle" data-day="1"><span class="rdt-day">Mon</span><span class="rdt-status">Train</span></button>
+          <button class="rest-day-toggle" data-day="2"><span class="rdt-day">Tue</span><span class="rdt-status">Train</span></button>
+          <button class="rest-day-toggle" data-day="3"><span class="rdt-day">Wed</span><span class="rdt-status">Train</span></button>
+          <button class="rest-day-toggle" data-day="4"><span class="rdt-day">Thu</span><span class="rdt-status">Train</span></button>
+          <button class="rest-day-toggle" data-day="5"><span class="rdt-day">Fri</span><span class="rdt-status">Train</span></button>
+          <button class="rest-day-toggle" data-day="6"><span class="rdt-day">Sat</span><span class="rdt-status">Train</span></button>
+          <button class="rest-day-toggle" data-day="0"><span class="rdt-day">Sun</span><span class="rdt-status">Train</span></button>
+        </div>
+        <div class="settings-summary" id="settingsSummary"></div>
+      </div>
+    </div>
 
     <!-- Editor Modal -->
     <div id="editorModal" class="modal" style="display:none">

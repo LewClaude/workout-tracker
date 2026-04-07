@@ -72,6 +72,17 @@ async function init() {
   }
   db.run('CREATE INDEX IF NOT EXISTS idx_logs_user ON workout_logs(user_id)');
 
+  // User settings (rest days, training days per week, etc.)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_settings (
+      user_id INTEGER NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (user_id, key),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   // Seed workout plan if empty
   const result = db.exec('SELECT COUNT(*) as c FROM exercises');
   const count = result[0].values[0][0];

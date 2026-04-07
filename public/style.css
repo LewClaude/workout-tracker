@@ -1076,6 +1076,126 @@ input[type="number"]::-webkit-outer-spin-button {
   position: relative;
 }
 
+/* ===== Settings Button ===== */
+.btn-settings {
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+/* ===== Settings Modal ===== */
+.settings-desc {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  background: var(--accent-glow);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+}
+
+.rest-day-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.rest-day-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 22px 10px;
+  border-radius: 16px;
+  border: 3px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 90px;
+}
+
+.rest-day-toggle .rdt-day {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.rest-day-toggle .rdt-status {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Training day (active/not rest) */
+.rest-day-toggle.training {
+  border-color: var(--green);
+  background: rgba(45, 212, 168, 0.12);
+  box-shadow: 0 2px 12px rgba(45, 212, 168, 0.15);
+}
+
+.rest-day-toggle.training .rdt-day {
+  color: var(--green);
+}
+
+/* Rest day */
+.rest-day-toggle.resting {
+  border-color: var(--border);
+  background: var(--surface);
+  opacity: 0.5;
+}
+
+.rest-day-toggle.resting .rdt-status {
+  color: var(--red);
+}
+
+.rest-day-toggle.resting .rdt-day {
+  color: var(--text-dim);
+}
+
+.rest-day-toggle:active {
+  transform: scale(0.95);
+}
+
+.settings-summary {
+  font-size: 14px;
+  color: var(--text);
+  text-align: center;
+  padding: 14px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.settings-summary strong {
+  color: var(--accent-light);
+  font-weight: 800;
+}
+
+/* ===== Day tab rest indicator ===== */
+.day-tab.user-rest {
+  opacity: 0.45;
+  position: relative;
+}
+
+.day-tab.user-rest::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
 /* ===== Selection ===== */
 ::selection {
   background: var(--accent-glow-strong);

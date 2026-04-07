@@ -10,6 +10,7 @@
   let currentUser = null;
   let timerInterval = null;
   let timerSeconds = 0;
+  let restDays = [0]; // default: Sunday
 
   // Auth DOM refs
   const authScreen = document.getElementById('authScreen');
@@ -53,10 +54,11 @@
     authPassword.value = '';
   }
 
-  function showApp() {
+  async function showApp() {
     authScreen.style.display = 'none';
     mainApp.style.display = 'block';
     usernameDisplay.textContent = currentUser.username;
+    await loadRestDays();
     setDate(new Date());
     bindEvents();
     loadPBs();
@@ -216,7 +218,9 @@
 
   function updateDayTabs() {
     document.querySelectorAll('.day-tab').forEach(tab => {
-      tab.classList.toggle('active', parseInt(tab.dataset.day) === currentDay);
+      const day = parseInt(tab.dataset.day);
+      tab.classList.toggle('active', day === currentDay);
+      tab.classList.toggle('user-rest', restDays.includes(day));
     });
   }
 
@@ -230,7 +234,7 @@
   }
 
   async function loadWorkout() {
-    if (currentDay === 0) {
+    if (restDays.includes(currentDay)) {
       restDay.style.display = 'block';
       workoutContent.style.display = 'none';
       updateStats();
@@ -603,6 +607,79 @@
     legend.innerHTML = groups.map(g =>
       `<span class="legend-item"><span class="legend-dot" style="background:${CHART_COLORS[g]}"></span>${g}</span>`
     ).join('');
+  }
+
+  // === Rest Day Settings ===
+  async function loadRestDays() {
+    const res = await fetch('/api/settings/rest-days');
+    const data = await res.json();
+    restDays = data.rest_days;
+    updateDayTabs();
+  }
+
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsModal = document.getElementById('settingsModal');
+  const closeSettings = document.getElementById('closeSettings');
+  const restDayGrid = document.getElementById('restDayGrid');
+  const settingsSummary = document.getElementById('settingsSummary');
+
+  settingsBtn.addEventListener('click', openSettings);
+  closeSettings.addEventListener('click', closeSettingsModal);
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) closeSettingsModal();
+  });
+
+  function openSettings() {
+    renderRestDayGrid();
+    settingsModal.style.display = 'flex';
+  }
+
+  function closeSettingsModal() {
+    settingsModal.style.display = 'none';
+    updateDayTabs();
+    loadWorkout();
+  }
+
+  function renderRestDayGrid() {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const buttons = restDayGrid.querySelectorAll('.rest-day-toggle');
+    buttons.forEach(btn => {
+      const day = parseInt(btn.dataset.day);
+      const isRest = restDays.includes(day);
+      btn.classList.toggle('resting', isRest);
+      btn.classList.toggle('training', !isRest);
+      btn.querySelector('.rdt-status').textContent = isRest ? 'Rest' : 'Train';
+
+      // Remove old listeners by cloning
+      const newBtn = btn.cloneNode(true);
+      btn.replaceWith(newBtn);
+      newBtn.addEventListener('click', () => toggleRestDay(day));
+    });
+    updateSettingsSummary();
+  }
+
+  async function toggleRestDay(day) {
+    if (restDays.includes(day)) {
+      restDays = restDays.filter(d => d !== day);
+    } else {
+      restDays.push(day);
+    }
+
+    await fetch('/api/settings/rest-days', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rest_days: restDays })
+    });
+
+    renderRestDayGrid();
+    showSaved();
+  }
+
+  function updateSettingsSummary() {
+    const trainCount = 7 - restDays.length;
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const restNames = restDays.map(d => dayNames[d]).join(', ') || 'None';
+    settingsSummary.innerHTML = `<strong>${trainCount}</strong> training days / week &mdash; Rest: ${restNames}`;
   }
 
   // === Editor ===
