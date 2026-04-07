@@ -71,6 +71,18 @@ async function init() {
       PRIMARY KEY (user_id, key)
     )
   `);
+
+  // One-time migration: wipe all legacy data from before per-user update
+  // Check if any old exercises with user_id=0 exist
+  const oldExercises = await pool.query('SELECT COUNT(*) as c FROM exercises WHERE user_id = 0');
+  if (parseInt(oldExercises.rows[0].c) > 0) {
+    await pool.query('DELETE FROM workout_logs');
+    await pool.query('DELETE FROM exercises WHERE user_id = 0');
+    await pool.query('DELETE FROM sessions');
+    await pool.query('DELETE FROM user_settings');
+    await pool.query('DELETE FROM users');
+    console.log('Migration complete: wiped legacy data');
+  }
 }
 
 async function all(sql, params = []) {
